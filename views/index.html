@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Week12 실습과제</title>
+    <style>
+      table { border: 1px solid black; border-collapse: collapse; }
+      table th, table td { border: 1px solid black; }
+    </style>
+  </head>
+  <body>
+    <div>
+        <form id="user-form">
+            <fieldset>
+                <legend>사용자 등록</legend>
+                <div><input id="username" type="text" placeholder="이름"></div>
+                <div><input id="age" type="number" placeholder="나이"></div>
+                <div><input id="married" type="checkbox"><label for="married">결혼 여부</label></div>
+                <button type="submit">등록</button>
+            </fieldset>
+        </form>
+    </div>
+    <br>
+    <table id="user-list">
+      <thead>
+      <tr>
+        <th>아이디</th>
+        <th>이름</th>
+        <th>나이</th>
+        <th>결혼여부</th>
+      </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{user.id}}</td>
+          <td>{{user.name}}</td>
+          <td>{{user.age}}</td>
+          <td>{{ '기혼' if user.married else '미혼'}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <br>
+    <div>
+      <form id="comment-form">
+        <fieldset>
+          <legend>댓글 등록</legend>
+          <div><input id="userid" type="text" placeholder="사용자 아이디"></div>
+          <div><input id="comment" type="text" placeholder="댓글"></div>
+          <button type="submit">등록</button>
+        </fieldset>
+      </form>
+    </div>
+    <br>
+    <table id="comment-list">
+      <thead>
+      <tr>
+        <th>아이디</th>
+        <th>작성자</th>
+        <th>댓글</th>
+        <th>수정</th>
+        <th>삭제</th>
+      </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 사용자 이름 눌렀을 때 댓글 로딩
+            // (셀렉터) user-list라는 id를 가진 element의 모든 tr element를 선택, 선택된 각 행에 대해 forEach루프를 실행한다.
+            document.querySelectorAll('#user-list tr').forEach((el) => {
+                console.log("클릭");
+                // 각 행에 클릭 이벤트를 추가하며 클릭시 함수를 실행한다.
+                el.addEventListener('click', function () {
+                // 클릭된 행 내부의 첫번째 셀의 텍스트 내용을 가져온 후 id 변수에 할당한다.
+                const id = el.querySelector('td').textContent;
+                // getComment 함수를 실행한다.
+                getComment(id);
+                });
+            });
+            // 사용자 로딩
+            async function getUser() {
+                try {
+                const res = await axios.get('/users'); // 서버로부터 '/users' 엔드포인트에 GET 요청을 보냄
+                const users = res.data; // 서버로부터 받은 응답 데이터를 변수 users에 할당
+                console.log(users); // 받은 사용자 데이터를 콘솔에 출력
+                const tbody = document.querySelector('#user-list tbody'); // '#user-list' 요소 안의 'tbody'를 선택
+                tbody.innerHTML = ""; // 'tbody' 요소 내의 HTML을 비움
+
+                users.map(function (user) { // 받은 사용자 데이터(users 배열) 각각에 대해 순회
+                    const row = document.createElement('tr'); // 새로운 테이블 행 요소 생성
+                    row.addEventListener('click', () => { // 각 행에 클릭 이벤트 추가
+                    getComment(user.id); // 클릭된 사용자의 아이디를 기반으로 댓글 가져오기 함수 호출
+                    });
+
+                    // 테이블 셀(td)을 생성하고 사용자 정보를 각 셀에 추가하여 행에 삽입
+                    let td = document.createElement('td');
+                    td.textContent = user.id; // 사용자 ID를 셀에 할당
+                    row.appendChild(td); // 행에 ID 셀 추가
+
+                    td = document.createElement('td');
+                    td.textContent = user.name; // 사용자 이름을 셀에 할당
+                    row.appendChild(td); // 행에 이름 셀 추가
+
+                    td = document.createElement('td');
+                    td.textContent = user.age; // 사용자 나이를 셀에 할당
+                    row.appendChild(td); // 행에 나이 셀 추가
+
+                    td = document.createElement('td');
+                    td.textContent = user.married ? '기혼' : '미혼'; // 사용자 결혼 여부를 텍스트로 변환하여 셀에 할당
+                    row.appendChild(td); // 행에 결혼 여부 셀 추가
+
+                    tbody.appendChild(row); // '#user-list'의 'tbody'에 행을 추가
+                });
+                } catch (err) {
+                console.error(err); // 오류 발생 시 콘솔에 오류 출력
+                }
+            }
+            // 댓글 로딩
+            async function getComment(id) {
+                try {
+                    const res = await axios.get(`/users/${id}/comments`); // 해당 사용자의 댓글을 가져오는 GET 요청
+                    const comments = res.data; // 서버로부터 받은 댓글 데이터를 변수에 할당
+                    const tbody = document.querySelector('#comment-list tbody'); // '#comment-list'의 'tbody'를 선택
+                    tbody.innerHTML = ''; // 'tbody' 요소 내의 HTML을 비움
+
+                    comments.map(function (comment) { // 받은 댓글 데이터(comments 배열) 각각에 대해 순회
+                        // 새로운 테이블 행 요소를 생성하고 각 셀에 데이터를 삽입하는 부분입니다.
+                        const row = document.createElement('tr'); // 새로운 테이블 행 요소 생성
+                        let td = document.createElement('td');
+                        td.textContent = comment.id; // 댓글 ID를 셀에 할당
+                        row.appendChild(td); // 행에 ID 셀 추가
+
+                        td = document.createElement('td');
+                        td.textContent = comment.User.name; // 댓글 작성자의 이름을 셀에 할당
+                        row.appendChild(td); // 행에 이름 셀 추가
+
+                        td = document.createElement('td');
+                        td.textContent = comment.comment; // 댓글 내용을 셀에 할당
+                        row.appendChild(td); // 행에 댓글 셀 추가
+
+                        // 수정 버튼 생성 및 클릭 이벤트 추가
+                        const edit = document.createElement('button');
+                        edit.textContent = '수정';
+                        edit.addEventListener('click', async () => {
+                        // 수정 버튼을 클릭하면 수정할 내용을 입력받는 프롬프트가 표시됩니다.
+                        const newComment = prompt('바꿀 내용을 입력하세요');
+                        if (!newComment) {
+                            return alert('내용을 반드시 입력하셔야 합니다');
+                        }
+                        try {
+                            // axios를 사용하여 댓글 수정 요청을 보냅니다.
+                            await axios.patch(`/comments/${comment.id}`, { comment: newComment });
+                            // 수정 후에는 해당 사용자의 댓글을 다시 가져옵니다.
+                            getComment(id);
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    });
+
+                    // 삭제 버튼 생성 및 클릭 이벤트 추가
+                    const remove = document.createElement('button');
+                    remove.textContent = '삭제';
+                    remove.addEventListener('click', async () => {
+                    try {
+                        // axios를 사용하여 댓글 삭제 요청을 보냅니다.
+                        await axios.delete(`/comments/${comment.id}`);
+                        // 삭제 후에는 해당 사용자의 댓글을 다시 가져옵니다.
+                        getComment(id);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                    });
+
+                    // 수정, 삭제 버튼을 테이블 셀에 추가하고 행에 추가합니다.
+                    td = document.createElement('td');
+                    td.appendChild(edit);
+                    row.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.appendChild(remove);
+                    row.appendChild(td);
+
+                    tbody.appendChild(row); // '#comment-list'의 'tbody'에 행을 추가
+                });
+                } catch (err) {
+                console.error(err); // 오류 발생 시 콘솔에 오류 출력
+                }
+            }
+            // 사용자 등록 시
+            // 사용자 등록 시, 폼 제출 이벤트를 감지하고 서버에 사용자 정보를 전달하는 부분입니다.
+            document.getElementById('user-form').addEventListener('submit', async (e) => {
+                e.preventDefault(); // 폼의 기본 제출 동작을 막습니다.
+
+                // 사용자가 입력한 이름, 나이, 결혼 여부 정보를 가져옵니다.
+                const name = e.target.username.value;
+                const age = e.target.age.value;
+                const married = e.target.married.checked;
+
+                // 입력 필드의 유효성을 검사하고, 필수 정보가 입력되지 않았을 경우 경고를 표시합니다.
+                if (!name) {
+                return alert('이름을 입력하세요');
+                }
+                if (!age) {
+                return alert('나이를 입력하세요');
+                }
+
+                try {
+                // axios를 사용하여 POST 요청을 전송하여 사용자 정보를 서버로 전달합니다.
+                await axios.post('/users', { name, age, married });
+
+                // 사용자 정보를 성공적으로 등록한 후에는 getUser 함수를 호출하여 사용자 목록을 다시 가져옵니다.
+                getUser();
+                } catch (err) {
+                console.error(err); // 오류가 발생했을 때 콘솔에 오류를 표시합니다.
+                }
+
+                // 폼 입력 필드를 초기화합니다.
+                e.target.username.value = '';
+                e.target.age.value = '';
+                e.target.married.checked = false;
+            });
+            // 댓글 등록 시
+            // 댓글 등록 시, 폼 제출 이벤트를 감지하고 서버에 댓글 정보를 전송하는 부분입니다.
+            document.getElementById('comment-form').addEventListener('submit', async (e) => {
+                e.preventDefault(); // 폼의 기본 제출 동작을 막습니다.
+
+                // 사용자가 입력한 아이디와 댓글 정보를 가져옵니다.
+                const id = e.target.userid.value;
+                const comment = e.target.comment.value;
+
+                // 입력 필드의 유효성을 검사하고, 필수 정보가 입력되지 않았을 경우 경고를 표시합니다.
+                if (!id) {
+                return alert('아이디를 입력하세요');
+                }
+                if (!comment) {
+                return alert('댓글을 입력하세요');
+                }
+
+                try {
+                // axios를 사용하여 POST 요청을 전송하여 댓글 정보를 서버로 전달합니다.
+                await axios.post('/comments', { id, comment });
+
+                // 댓글 정보를 성공적으로 등록한 후에는 해당 사용자의 댓글을 다시 가져오는 함수인 getComment를 호출합니다.
+                getComment(id);
+                } catch (err) {
+                console.error(err); // 오류가 발생했을 때 콘솔에 오류를 표시합니다.
+                }
+
+                // 폼 입력 필드를 초기화합니다.
+                e.target.userid.value = '';
+                e.target.comment.value = '';
+            });
+        });
+    </script>
+  </body>
+</html>
